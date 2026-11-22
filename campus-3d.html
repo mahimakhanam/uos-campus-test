@@ -1,0 +1,144 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>UoS Wayfinding | 3D Campus Prototype</title>
+<style>
+:root{font-family:Inter,Segoe UI,Arial,sans-serif;color:#193e39;background:#e9eeeb}
+*{box-sizing:border-box}body{margin:0}
+.layout{display:grid;grid-template-columns:315px minmax(0,1fr);height:100dvh;min-height:490px}
+aside{padding:22px 18px;overflow-y:auto;background:white;border-right:1px solid #dce6e2;z-index:1}
+.eyebrow{margin:0 0 5px;font-size:11px;text-transform:uppercase;letter-spacing:.1em;font-weight:800;color:#07836c}
+h1{margin:0 0 8px;font-size:23px;letter-spacing:-.5px}h2{font-size:13px;margin:22px 0 9px}
+p{font-size:13px;line-height:1.55;color:#60746f;margin:8px 0}
+button,a.btn{border:1px solid #cddcd6;border-radius:9px;background:#fff;color:#124b42;padding:11px 12px;cursor:pointer;font:inherit;font-size:13px;text-decoration:none}
+button:hover,a.btn:hover{background:#e9f5f0}button:focus-visible,a:focus-visible{outline:3px solid #5fae98;outline-offset:2px}
+.primary{background:#0e7562;color:#fff;border-color:#0e7562}.primary:hover{background:#075b4c}
+.row{display:flex;flex-wrap:wrap;gap:6px}.row>*{flex:1;white-space:nowrap;text-align:center}
+.building{display:flex;align-items:center;justify-content:space-between;width:100%;margin:7px 0;text-align:left;white-space:normal}
+.building.selected{background:#ebf7f1;border-color:#158b70;font-weight:700}
+.building small{background:#f0f5f3;padding:3px 5px;border-radius:5px}
+#details{margin-top:16px;background:#eef6f3;border:1px solid #dbe8e2;border-radius:10px;padding:13px;min-height:84px;font-size:13px;line-height:1.55}
+#status{margin:12px 0;font-size:12px;min-height:34px;color:#397160}
+.warning{font-size:12px;border-left:3px solid #cb9a38;padding:10px;background:#fff8ec;color:#775b2d}
+#canvasArea{position:relative;min-width:0;overflow:hidden}
+#stage{height:100%;width:100%}#stage canvas{display:block;width:100%;height:100%;touch-action:none}
+.floating{position:absolute;top:18px;left:18px;pointer-events:none;padding:12px 15px;border-radius:10px;background:#fffffff0;box-shadow:0 5px 18px #13352422;font-size:13px;font-weight:700}
+.help{position:absolute;bottom:15px;left:15px;right:15px;pointer-events:none;padding:11px 13px;background:#ffffffec;border-radius:9px;color:#29594e;font-size:12px}
+#hoverTag{position:absolute;pointer-events:none;padding:6px 10px;background:#173a34;color:white;border-radius:7px;font-size:12px;display:none}
+@media(max-width:750px){.layout{height:auto;grid-template-columns:1fr}#canvasArea{height:60vh;grid-row:1}aside{grid-row:2}}
+
+#hoverTag {
+  max-width: 250px;
+  white-space: normal;
+  overflow-wrap: break-word;
+  line-height: 1.4;
+}
+
+#mapControls {
+  position: absolute;
+  right: 18px;
+  top: 20px;
+  z-index: 20;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+}
+
+#mapControls button {
+  width: 44px;
+  height: 44px;
+  background: white;
+  border: 1px solid #cddcd6;
+  border-radius: 8px;
+  color: #075e52;
+  font-size: 23px;
+  cursor: pointer;
+  box-shadow: 0 2px 6px #0002;
+}
+
+#mapControls button:hover {
+  background: #e8f5f0;
+}
+
+.panButtons {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  margin-top: 10px;
+}
+
+.panButtons > div {
+  display: flex;
+  gap: 4px;
+}
+
+</style>
+<script type="importmap">
+{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.181.2/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.181.2/examples/jsm/"}}
+</script>
+</head>
+<body>
+<div class="layout">
+<aside>
+  <div class="eyebrow">Women's Campus · Development prototype</div>
+  <h1>UoS 3D Campus</h1>
+  <p>3D building outlines aligned with the team's SVG map. This is an experimental visualization, not a surveyed 3D model.</p>
+  <div class="row"><a class="btn" href="index.html">2D map</a><button class="primary" id="reset">Reset view</button></div>
+  <h2>Camera views</h2>
+  <div class="row"><button id="top">Top view</button><button id="angle">3D angle</button><button id="side">Side view</button></div>
+
+  <button type="button" id="toggleBuildings">
+    Hide 3D Buildings
+  </button>
+
+  <h2>Available 3D buildings</h2>
+
+  <input
+          type="search"
+          id="buildingSearch"
+          placeholder="Search C9, Library, Engineering..."
+          aria-label="Search 3D buildings"
+          style="width:100%; padding:11px; margin:10px 0;
+         border:1px solid #cddcd6; border-radius:8px;
+         font:inherit;"
+  >
+
+  <p>Only these buildings currently have individually identifiable paths in the team's SVG.</p>
+  <button class="building" data-building="C7"><span>C7 · Library</span><small>Academic</small></button>
+  <button class="building" data-building="C5"><span>C5 · Women's Students Center</span><small>Services</small></button>
+  <button class="building" data-building="C4"><span>C4 · Dining Hall</span><small>Services</small></button>
+  <div id="details" aria-live="polite">Click a 3D building or select its name to see details.</div>
+  <p id="status" role="status" aria-live="polite">Loading SVG building footprints…</p>
+  <p class="warning"><b>Accuracy:</b> SVG outlines come from the team map. Building heights are fixed <em>illustrative</em> values, not measured heights. This version does not perform 3D indoor or accessible routing.</p>
+</aside>
+<main id="canvasArea">
+  <div id="stage" aria-label="Interactive 3D campus map"></div>
+
+  <div id="mapControls">
+    <button type="button" id="zoomIn" title="Zoom in">+</button>
+    <button type="button" id="zoomOut" title="Zoom out">−</button>
+
+    <div class="panButtons">
+      <button type="button" id="panUp" title="Move up">↑</button>
+      <div>
+        <button type="button" id="panLeft" title="Move left">←</button>
+        <button type="button" id="panRight" title="Move right">→</button>
+      </div>
+      <button type="button" id="panDown" title="Move down">↓</button>
+    </div>
+  </div>
+
+  <div class="floating">Women's Campus · 3D prototype</div>
+  <div class="help">Left-drag: rotate · Wheel: zoom · Right-drag: pan · Click building: select</div>
+  <div id="hoverTag" aria-hidden="true"></div>
+</main>
+</div>
+
+<script type="module" src="./campus3d.js"></script>
+
+</body>
+</html>
